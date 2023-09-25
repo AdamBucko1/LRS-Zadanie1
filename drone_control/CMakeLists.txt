@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(lrs_zad_1)
+project(drone_control)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -19,6 +19,22 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(mavros_msgs REQUIRED)
+
+# Declare a C++ executable
+add_executable(drone_control_node src/drone_control_node.cpp)
+
+ament_target_dependencies(drone_control_node rclcpp geometry_msgs mavros_msgs)
+
+
+install(TARGETS drone_control_node DESTINATION lib/${PROJECT_NAME})
+
+include_directories(
+  include
+  /opt/ros/foxy/include
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
