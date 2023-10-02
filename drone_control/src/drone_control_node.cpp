@@ -13,6 +13,7 @@ void DroneControlNode::init() {
   setup_subscribers();
   setup_services();
   setup_clients();
+  connect_to_mavros();
 }
 
 void DroneControlNode::setup_publishers() {
@@ -86,8 +87,10 @@ void DroneControlNode::arm_throttle() {
 void DroneControlNode::takeoff(int height) {
 
   mavros_msgs::srv::CommandTOL::Request takeoff_req;
-  takeoff_req.altitude = height;
+  takeoff_req.altitude =
+      height; // set the height you want the drone to take off to
 
+  // wait for the takeoff service to become available
   while (!takeoff_client_->wait_for_service(1s)) {
     if (!rclcpp::ok()) {
       RCLCPP_ERROR(
@@ -97,8 +100,25 @@ void DroneControlNode::takeoff(int height) {
     }
     RCLCPP_INFO(this->get_logger(), "Waiting for takeoff service...");
   }
+
+  // send a request to take off
   auto result_future = takeoff_client_->async_send_request(
       std::make_shared<mavros_msgs::srv::CommandTOL::Request>(takeoff_req));
+
+  // handle the result
+  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
+                                         result_future) ==
+      rclcpp::FutureReturnCode::SUCCESS) {
+    auto result = result_future.get();
+    // Assuming there is a 'success' field in result to check if the command was
+    // successful
+    if (!result->success)
+      RCLCPP_ERROR(this->get_logger(), "Failed to take off");
+    else
+      RCLCPP_INFO(this->get_logger(), "Successfully initiated takeoff");
+  } else {
+    RCLCPP_ERROR(this->get_logger(), "Failed to call takeoff service");
+  }
 }
 
 void DroneControlNode::callback_state(
