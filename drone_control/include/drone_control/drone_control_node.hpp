@@ -4,6 +4,7 @@
 #include <mavros_msgs/srv/command_tol.hpp>
 #include <mavros_msgs/srv/set_mode.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <drone_control/map_handler.hpp>
 
 class DroneControlNode : public rclcpp::Node {
 public:
@@ -27,4 +28,6 @@ private:
   rclcpp::Client<mavros_msgs::srv::SetMode>::SharedPtr set_mode_client_;
   rclcpp::Client<mavros_msgs::srv::CommandTOL>::SharedPtr takeoff_client_;
   mavros_msgs::msg::State current_state_;
+
+  MapHandler map_handler_;
 };
