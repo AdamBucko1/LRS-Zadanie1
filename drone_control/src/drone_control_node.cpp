@@ -22,10 +22,30 @@ void DroneControlNode::setup_publishers() {
 }
 
 void DroneControlNode::setup_subscribers() {
+  drone_state_subscriber();
+  local_pos_subscriber();
+}
+void DroneControlNode::drone_state_subscriber() {
   state_sub_ = this->create_subscription<mavros_msgs::msg::State>(
       "mavros/state", 10,
       std::bind(&DroneControlNode::callback_state, this,
                 std::placeholders::_1));
+}
+void DroneControlNode::local_pos_subscriber() {
+  rmw_qos_profile_t custom_qos = rmw_qos_profile_default;
+  custom_qos.depth = 1;
+  custom_qos.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
+  auto qos =
+      rclcpp::QoS(rclcpp::QoSInitialization(custom_qos.history, 1), custom_qos);
+  local_pos_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+      "/mavros/local_position/pose", qos,
+      std::bind(&DroneControlNode::callback_local_pos, this,
+                std::placeholders::_1));
+}
+
+void DroneControlNode::callback_local_pos(
+    const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+  current_local_pos_ = *msg;
 }
 
 void DroneControlNode::setup_clients() {
