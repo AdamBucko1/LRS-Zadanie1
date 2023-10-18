@@ -54,16 +54,17 @@ void MapHandler::load_map()
 
   work_map_ = origin_map_;
 
-  bloat_map(2);
-
   start_.x = 30;
   start_.y = 200;
   start_.z = 9;
   goal_.x = 200;
   goal_.y = 200;
   goal_.z = 8;
-  flood_fill();
 
+  fill_empty_boxes();
+  bloat_map(2);
+  
+  flood_fill();
   print_map();
 }
 
@@ -82,19 +83,18 @@ void MapHandler::bloat_map(int num_of_cells)
     for (int k = 0; k < layers; k++) {
       for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-          
-            if (work_map_[i][j][k] == 1) {
-                // Iterate over the 4 possible directions
-                for (int l = 0; l < 8; l++) {
-                    int ni = i + dx[l];
-                    int nj = j + dy[l];
+          if (work_map_[i][j][k] == 1) {
+            // Iterate over the 8 possible directions
+            for (int l = 0; l < 8; l++) {
+              int ni = i + dx[l];
+              int nj = j + dy[l];
 
-                    // Check if the adjacent cell is within bounds
-                    if (ni >= 0 && ni < rows && nj >= 0 && nj < cols) {
-                        bloated_map[ni][nj][k] = 1;
-                    }
-                }
+              // Check if the adjacent cell is within bounds
+              if (ni >= 0 && ni < rows && nj >= 0 && nj < cols) {
+                  bloated_map[ni][nj][k] = 1;
+              }
             }
+          }
         }
       }
     }
@@ -102,22 +102,91 @@ void MapHandler::bloat_map(int num_of_cells)
   }
 }
 
+void MapHandler::fill_empty_boxes()
+{
+  std::vector<std::vector<int>> slice(288 , std::vector<int> (366));
+  for(unsigned int layer = 0; layer < work_map_[0][0].size(); layer++) {
+    for(unsigned int row = 0; row < work_map_.size(); row++) {
+      for(unsigned int col = 0; col < work_map_[0].size(); col++) {
+        slice[row][col] = work_map_[row][col][layer];
+      }
+    }
+
+    // fills room with 2s
+    find_boxes(slice);
+
+    // 0s are space in boxes and 2s are free space
+    for(unsigned int row = 0; row < slice.size(); row++) {
+      for(unsigned int col = 0; col < slice[0].size(); col++) {
+        if(slice[row][col] == 0)
+          slice[row][col] = 1;
+        else if(slice[row][col] == 2)
+          slice[row][col] = 0;
+      }
+    }
+
+    for(unsigned int row = 0; row < work_map_.size(); row++) {
+      for(unsigned int col = 0; col < work_map_[0].size(); col++) {
+        work_map_[row][col][layer] = slice[row][col];
+      }
+    }
+  }
+}
+
+void MapHandler::flood_fill_room(std::vector<std::vector<int>>& grid,unsigned int x,unsigned int y)
+{
+  if (x >= grid.size() || y >= grid[0].size() || grid[x][y] != 0) {
+      return;
+  }
+  grid[x][y] = 2; // Mark as visited
+  flood_fill_room(grid, x + 1, y);
+  flood_fill_room(grid, x - 1, y);
+  flood_fill_room(grid, x, y + 1);
+  flood_fill_room(grid, x, y - 1);
+}
+
+void MapHandler::find_boxes(std::vector<std::vector<int>>& grid) {
+  for (unsigned int i = 200; i < grid.size(); i++) {
+    for (unsigned int j = 200; j < grid[0].size(); j++) {
+      if (grid[i][j] == 0) {
+        std::vector<std::pair<int, int>> visitedCells;
+        flood_fill_room(grid, i, j);
+        bool isClosedLoop = true;
+
+        // Check if the region has a wall in its boundary
+        for (auto cell : visitedCells) {
+            unsigned int x = cell.first;
+            unsigned int y = cell.second;
+            if (x == 200 || x == grid.size() - 1 || y == 200 || y == grid[0].size() - 1) {
+                isClosedLoop = false;
+                break;
+            }
+        }
+
+        if (isClosedLoop) {
+            return;
+        }
+      }
+    }
+  }
+}
+
 void MapHandler::flood_fill()
 {
-  std::queue<Point<int>> elemet_queue;
+  std::queue<Point<unsigned int>> elemet_queue;
   visited_[start_.x][start_.y][start_.z] = true;
   work_map_[start_.x][start_.y][start_.z] = 2;
   elemet_queue.push(start_);
   while(!elemet_queue.empty())
   {
-    Point<int> actual_element = elemet_queue.front();
+    Point<unsigned int> actual_element = elemet_queue.front();
     elemet_queue.pop();
     if (actual_element.x == goal_.x && actual_element.y == goal_.y && actual_element.z == goal_.z)
     {
         return;
     }
 
-    std::vector<Point<int>> neighbors = {
+    std::vector<Point<unsigned int>> neighbors = {
         {actual_element.x+1, actual_element.y, actual_element.z}, {actual_element.x-1, actual_element.y, actual_element.z},
         {actual_element.x, actual_element.y+1, actual_element.z}, {actual_element.x, actual_element.y-1, actual_element.z},
         {actual_element.x+1, actual_element.y+1, actual_element.z}, {actual_element.x-1, actual_element.y-1, actual_element.z},
@@ -134,10 +203,10 @@ void MapHandler::flood_fill()
         {actual_element.x+1, actual_element.y-1, actual_element.z-1}, {actual_element.x-1, actual_element.y+1, actual_element.z-1}
     };
 
-    for (const Point<int>& point : neighbors)
+    for (const Point<unsigned int>& point : neighbors)
     {
-        if (point.x >= 0 && point.x < work_map_.size() && point.y >= 0 && point.y < work_map_[0].size() && 
-            point.z >= 0 && point.z < work_map_[0][0].size() && work_map_[point.x][point.y][point.z] != 1)
+        if (point.x < work_map_.size() && point.y < work_map_[0].size() && 
+            point.z < work_map_[0][0].size() && work_map_[point.x][point.y][point.z] != 1)
         {
             if (!visited_[point.x][point.y][point.z])
             {
