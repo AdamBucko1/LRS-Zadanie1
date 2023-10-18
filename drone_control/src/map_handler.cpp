@@ -57,11 +57,11 @@ void MapHandler::load_map()
   bloat_map(2);
 
   start_.x = 30;
-  start_.x = 200;
-  start_.x = 10;
+  start_.y = 200;
+  start_.z = 9;
   goal_.x = 200;
-  goal_.x = 200;
-  goal_.x = 10;
+  goal_.y = 200;
+  goal_.z = 8;
   flood_fill();
 
   print_map();
@@ -119,13 +119,25 @@ void MapHandler::flood_fill()
 
     std::vector<Point<int>> neighbors = {
         {actual_element.x+1, actual_element.y, actual_element.z}, {actual_element.x-1, actual_element.y, actual_element.z},
-        {actual_element.x, actual_element.y+1, actual_element.z}, {actual_element.x, actual_element.y-1, actual_element.z}
+        {actual_element.x, actual_element.y+1, actual_element.z}, {actual_element.x, actual_element.y-1, actual_element.z},
+        {actual_element.x+1, actual_element.y+1, actual_element.z}, {actual_element.x-1, actual_element.y-1, actual_element.z},
+        {actual_element.x+1, actual_element.y-1, actual_element.z}, {actual_element.x-1, actual_element.y+1, actual_element.z},
+
+        {actual_element.x+1, actual_element.y, actual_element.z+1}, {actual_element.x-1, actual_element.y, actual_element.z+1},
+        {actual_element.x, actual_element.y+1, actual_element.z+1}, {actual_element.x, actual_element.y-1, actual_element.z+1},
+        {actual_element.x+1, actual_element.y+1, actual_element.z+1}, {actual_element.x-1, actual_element.y-1, actual_element.z+1},
+        {actual_element.x+1, actual_element.y-1, actual_element.z+1}, {actual_element.x-1, actual_element.y+1, actual_element.z+1},
+
+        {actual_element.x+1, actual_element.y, actual_element.z-1}, {actual_element.x-1, actual_element.y, actual_element.z-1},
+        {actual_element.x, actual_element.y+1, actual_element.z-1}, {actual_element.x, actual_element.y-1, actual_element.z-1},
+        {actual_element.x+1, actual_element.y+1, actual_element.z-1}, {actual_element.x-1, actual_element.y-1, actual_element.z-1},
+        {actual_element.x+1, actual_element.y-1, actual_element.z-1}, {actual_element.x-1, actual_element.y+1, actual_element.z-1}
     };
 
     for (const Point<int>& point : neighbors)
     {
         if (point.x >= 0 && point.x < work_map_.size() && point.y >= 0 && point.y < work_map_[0].size() && 
-            point.z >= 0 && point.z < work_map_[0][0].size() && work_map_[point.x][point.y][point.z] != 0)
+            point.z >= 0 && point.z < work_map_[0][0].size() && work_map_[point.x][point.y][point.z] != 1)
         {
             if (!visited_[point.x][point.y][point.z])
             {
@@ -143,7 +155,15 @@ void MapHandler::print_map()
   for(unsigned int layer = 0; layer < work_map_[0][0].size(); layer++) {
     for(unsigned int row = 0; row < work_map_.size(); row++) {
       for(unsigned int col = 0; col < work_map_[0].size(); col++) {
-        std::cout << work_map_[row][col][layer] << " ";
+
+        if(work_map_[row][col][layer] < 10)
+          std::cout << std::setw(3) << work_map_[row][col][layer] << "\033[37m" << " ";
+        else if(work_map_[row][col][layer] < 100)
+          std::cout << std::setw(3) << work_map_[row][col][layer] << "\033[32m" << " ";
+        else if(work_map_[row][col][layer] < 200)
+          std::cout << std::setw(3) << work_map_[row][col][layer] << "\033[36m" << " ";
+        else 
+          std::cout << std::setw(3) << work_map_[row][col][layer] << "\033[31m" << " ";
       }
       std::cout << std::endl;
     }
