@@ -7,10 +7,11 @@ public:
     MapHandler();
 
     void load_map();
-    void print_map();
-    void flood_fill();
+    void print_map(std::vector<std::vector<std::vector<int>>>& map);
+    std::vector<Point<unsigned int>> generate_path();
 
 private:
+    void flood_fill();
     void bloat_map(int num_of_cells);
     void flood_fill_room(std::vector<std::vector<int>>& grid, unsigned int x, unsigned int y);
     void find_boxes(std::vector<std::vector<int>>& grid);
@@ -22,6 +23,9 @@ private:
 
     // flood fill
     std::vector<std::vector<std::vector<bool>>>visited_;
+    std::vector<Point<unsigned int>> waypoints_;
+    std::vector<Point<unsigned int>> path_;
+
     Point<unsigned int> start_;
     Point<unsigned int> goal_;
 };

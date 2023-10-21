@@ -5,6 +5,7 @@
 #include <filesystem> 
 #include <vector>
 #include <queue>
+#include <algorithm>
 
 template<class T> 
 struct Point {

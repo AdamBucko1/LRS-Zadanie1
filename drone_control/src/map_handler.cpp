@@ -1,8 +1,8 @@
 #include <drone_control/map_handler.hpp>
 
 MapHandler::MapHandler() :
-origin_map_(288, std::vector<std::vector<int>>(366, std::vector<int>(10))),
-visited_(288, std::vector<std::vector<bool>>(366, std::vector<bool>(10)))
+origin_map_(0, std::vector<std::vector<int>>(0, std::vector<int>(0))),
+visited_(0, std::vector<std::vector<bool>>(0, std::vector<bool>(0)))
 {
   load_map();
 }
@@ -20,7 +20,7 @@ void MapHandler::load_map()
   {
     std::stringstream ss;
     std::string input_string;
-    int num_rows = 0, num_cols = 0;
+    int num_rows = 0, num_cols = 0, num_layers = 10;
     int temp_val;
 
     // Open map part path
@@ -34,6 +34,9 @@ void MapHandler::load_map()
     ss >> input_string; // First line : version
     ss >> num_cols >> num_rows; // Second line : size
     ss >> input_string; // Third line : comment
+
+    origin_map_.resize(num_rows, std::vector<std::vector<int>>(num_cols, std::vector<int>(num_layers)));
+    visited_.resize(num_rows, std::vector<std::vector<bool>>(num_cols, std::vector<bool>(num_layers)));
 
     // Following lines : data
     for(int row = 0; row < num_rows; row++){
@@ -52,20 +55,20 @@ void MapHandler::load_map()
     layer++;
   }
 
-  work_map_ = origin_map_;
+  fill_empty_boxes();
+  bloat_map(2);
 
+  work_map_ = origin_map_;
   start_.x = 30;
   start_.y = 200;
   start_.z = 9;
   goal_.x = 200;
-  goal_.y = 200;
-  goal_.z = 8;
-
-  fill_empty_boxes();
-  bloat_map(2);
+  goal_.y = 320;
+  goal_.z = 5;
   
   flood_fill();
-  print_map();
+  generate_path();
+  print_map(origin_map_);
 }
 
 void MapHandler::bloat_map(int num_of_cells)
@@ -83,7 +86,7 @@ void MapHandler::bloat_map(int num_of_cells)
     for (int k = 0; k < layers; k++) {
       for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-          if (work_map_[i][j][k] == 1) {
+          if (origin_map_[i][j][k] == 1) {
             // Iterate over the 8 possible directions
             for (int l = 0; l < 8; l++) {
               int ni = i + dx[l];
@@ -98,24 +101,24 @@ void MapHandler::bloat_map(int num_of_cells)
         }
       }
     }
-    work_map_ = bloated_map;
+    origin_map_ = bloated_map;
   }
 }
 
 void MapHandler::fill_empty_boxes()
 {
   std::vector<std::vector<int>> slice(288 , std::vector<int> (366));
-  for(unsigned int layer = 0; layer < work_map_[0][0].size(); layer++) {
-    for(unsigned int row = 0; row < work_map_.size(); row++) {
-      for(unsigned int col = 0; col < work_map_[0].size(); col++) {
-        slice[row][col] = work_map_[row][col][layer];
+  for(unsigned int layer = 0; layer < origin_map_[0][0].size(); layer++) {
+    for(unsigned int row = 0; row < origin_map_.size(); row++) {
+      for(unsigned int col = 0; col < origin_map_[0].size(); col++) {
+        slice[row][col] = origin_map_[row][col][layer];
       }
     }
 
     // fills room with 2s
     find_boxes(slice);
 
-    // 0s are space in boxes and 2s are free space
+    // 0 -> space in boxes, 2 -> free space
     for(unsigned int row = 0; row < slice.size(); row++) {
       for(unsigned int col = 0; col < slice[0].size(); col++) {
         if(slice[row][col] == 0)
@@ -125,9 +128,9 @@ void MapHandler::fill_empty_boxes()
       }
     }
 
-    for(unsigned int row = 0; row < work_map_.size(); row++) {
-      for(unsigned int col = 0; col < work_map_[0].size(); col++) {
-        work_map_[row][col][layer] = slice[row][col];
+    for(unsigned int row = 0; row < origin_map_.size(); row++) {
+      for(unsigned int col = 0; col < origin_map_[0].size(); col++) {
+        origin_map_[row][col][layer] = slice[row][col];
       }
     }
   }
@@ -219,20 +222,97 @@ void MapHandler::flood_fill()
   }
 }
 
-void MapHandler::print_map()
+std::vector<Point<unsigned int>> MapHandler::generate_path()
 {
-  for(unsigned int layer = 0; layer < work_map_[0][0].size(); layer++) {
-    for(unsigned int row = 0; row < work_map_.size(); row++) {
-      for(unsigned int col = 0; col < work_map_[0].size(); col++) {
+  if (!visited_[goal_.x][goal_.y][goal_.z])
+  {
+      return path_;
+  }
 
-        if(work_map_[row][col][layer] < 10)
-          std::cout << std::setw(3) << work_map_[row][col][layer] << "\033[37m" << " ";
-        else if(work_map_[row][col][layer] < 100)
-          std::cout << std::setw(3) << work_map_[row][col][layer] << "\033[32m" << " ";
-        else if(work_map_[row][col][layer] < 200)
-          std::cout << std::setw(3) << work_map_[row][col][layer] << "\033[36m" << " ";
+  std::vector<bool> actual_diff_xyz = {false, false, false};
+  std::vector<bool> last_diff_xyz = {true, true, true};
+  Point<unsigned int> point = goal_;
+  int cost = work_map_[goal_.x][goal_.y][goal_.z];
+  while (point.x != start_.x || point.y != start_.y)
+  {
+      path_.push_back(point);
+
+      std::cout << "ax: " << actual_diff_xyz[0] << "  y: " << actual_diff_xyz[1] << "  z: " << actual_diff_xyz[2] << "   ";
+      std::cout << "lx: " << last_diff_xyz[0] << "  y: " << last_diff_xyz[1] << "  z: " << last_diff_xyz[2] << "   ";
+
+      std::vector<Point<unsigned int>> neighbors = {
+        {point.x+1, point.y, point.z}, {point.x-1, point.y, point.z},
+        {point.x, point.y+1, point.z}, {point.x, point.y-1, point.z},
+        {point.x+1, point.y+1, point.z}, {point.x-1, point.y-1, point.z},
+        {point.x+1, point.y-1, point.z}, {point.x-1, point.y+1, point.z},
+
+        {point.x+1, point.y, point.z}, {point.x-1, point.y, point.z+1},
+        {point.x, point.y+1, point.z}, {point.x, point.y-1, point.z+1},
+        {point.x+1, point.y+1, point.z}, {point.x-1, point.y-1, point.z+1},
+        {point.x+1, point.y-1, point.z}, {point.x-1, point.y+1, point.z+1},
+
+        {point.x+1, point.y, point.z}, {point.x-1, point.y, point.z-1},
+        {point.x, point.y+1, point.z}, {point.x, point.y-1, point.z-1},
+        {point.x+1, point.y+1, point.z}, {point.x-1, point.y-1, point.z-1},
+        {point.x+1, point.y-1, point.z}, {point.x-1, point.y+1, point.z-1}
+      };
+
+      for (const Point<unsigned int>& neighbor : neighbors)
+      {
+          if (neighbor.x < work_map_.size() && neighbor.y < work_map_[0].size() && 
+              neighbor.z < work_map_[0][0].size() && visited_[neighbor.x][neighbor.y][neighbor.z])
+          {
+              if (work_map_[neighbor.x][neighbor.y][neighbor.z] == cost - 1)
+              {
+                  cost = work_map_[neighbor.x][neighbor.y][neighbor.z];
+                  if(abs(neighbor.x - point.x) > 0) actual_diff_xyz[0] = true;
+                  if(abs(neighbor.y - point.y) > 0) actual_diff_xyz[1] = true;
+                  if(abs(neighbor.z - point.z) > 0) actual_diff_xyz[2] = true;
+
+                  if(actual_diff_xyz[0] != last_diff_xyz[0] || actual_diff_xyz[1] != last_diff_xyz[1] || actual_diff_xyz[2] != last_diff_xyz[2])
+                  {
+                    waypoints_.push_back(path_.back());
+                  }
+
+                  last_diff_xyz = actual_diff_xyz;
+                  point = neighbor;
+              }
+          }
+      }
+  }
+  path_.push_back(start_);
+  waypoints_.push_back(start_);
+  std::reverse(path_.begin(), path_.end());
+
+
+
+  for(Point<unsigned int> point : path_)
+  {
+    origin_map_[point.x][point.y][point.z] = 444;
+  }
+
+  for(Point<unsigned int> point : waypoints_)
+  {
+    origin_map_[point.x][point.y][point.z] = 111;
+  }
+    
+  return path_;
+}
+
+void MapHandler::print_map(std::vector<std::vector<std::vector<int>>>& map)
+{
+  for(unsigned int layer = 0; layer < map[0][0].size(); layer++) {
+    for(unsigned int row = 0; row < map.size(); row++) {
+      for(unsigned int col = 0; col < map[0].size(); col++) {
+
+        if(map[row][col][layer] < 10)
+          std::cout  << "\033[37m" << std::setw(3) << map[row][col][layer] << " ";
+        else if(map[row][col][layer] < 100)
+          std::cout  << "\033[32m" << std::setw(3) << map[row][col][layer]  << " ";
+        else if(map[row][col][layer] < 200)
+          std::cout  << "\033[36m" << std::setw(3) << map[row][col][layer]  << " ";
         else 
-          std::cout << std::setw(3) << work_map_[row][col][layer] << "\033[31m" << " ";
+          std::cout  << "\033[31m" << std::setw(3) << map[row][col][layer]  << " ";
       }
       std::cout << std::endl;
     }
