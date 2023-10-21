@@ -5,13 +5,14 @@ class MapHandler
 {
 public:
     MapHandler();
-
-    void load_map();
-    void print_map(std::vector<std::vector<std::vector<int>>>& map);
-    std::vector<Point<unsigned int>> generate_path();
+    bool generate_path(Point<double> start, Point<double> goal);
+    inline std::vector<Point<unsigned int>> get_waypoints() { return waypoints_; };
+    inline std::vector<Point<unsigned int>> get_path() { return path_; };
 
 private:
-    void flood_fill();
+    void load_map();
+    void print_map(std::vector<std::vector<std::vector<int>>>& map);
+    std::vector<std::vector<std::vector<bool>>> flood_fill(Point<unsigned int> start, Point<unsigned int> goal);
     void bloat_map(int num_of_cells);
     void flood_fill_room(std::vector<std::vector<int>>& grid, unsigned int x, unsigned int y);
     void find_boxes(std::vector<std::vector<int>>& grid);
@@ -20,12 +21,12 @@ private:
 private:
     std::vector<std::vector<std::vector<int>>> origin_map_;
     std::vector<std::vector<std::vector<int>>> work_map_;
+    std::vector<unsigned int> map_size_;
+    std::map<double, int> height_to_layer_map_;
+    static constexpr unsigned int GRID_SIZE_XY = 5;
 
-    // flood fill
-    std::vector<std::vector<std::vector<bool>>>visited_;
+
+    // Map navigation
     std::vector<Point<unsigned int>> waypoints_;
     std::vector<Point<unsigned int>> path_;
-
-    Point<unsigned int> start_;
-    Point<unsigned int> goal_;
 };

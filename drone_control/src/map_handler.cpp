@@ -1,8 +1,7 @@
 #include <drone_control/map_handler.hpp>
 
 MapHandler::MapHandler() :
-origin_map_(0, std::vector<std::vector<int>>(0, std::vector<int>(0))),
-visited_(0, std::vector<std::vector<bool>>(0, std::vector<bool>(0)))
+origin_map_(0, std::vector<std::vector<int>>(0, std::vector<int>(0)))
 {
   load_map();
 }
@@ -15,12 +14,14 @@ void MapHandler::load_map()
                                      "map_125.pgm","map_150.pgm","map_175.pgm","map_180.pgm",
                                      "map_200.pgm","map_225.pgm"};
 
+  std::vector<double> layer_heights = {0.25,0.75,0.80,1.0,1.25,1.5,1.75,1.80,2.0,2.25};
+
   int layer = 0;
   for(std::string map_path : map_paths)
   {
     std::stringstream ss;
     std::string input_string;
-    int num_rows = 0, num_cols = 0, num_layers = 10;
+    unsigned int num_rows = 0, num_cols = 0, num_layers = 10;
     int temp_val;
 
     // Open map part path
@@ -35,12 +36,12 @@ void MapHandler::load_map()
     ss >> num_cols >> num_rows; // Second line : size
     ss >> input_string; // Third line : comment
 
+    map_size_ = {num_rows, num_cols, num_layers};
     origin_map_.resize(num_rows, std::vector<std::vector<int>>(num_cols, std::vector<int>(num_layers)));
-    visited_.resize(num_rows, std::vector<std::vector<bool>>(num_cols, std::vector<bool>(num_layers)));
 
     // Following lines : data
-    for(int row = 0; row < num_rows; row++){
-      for (int col = 0; col < num_cols; col++){
+    for(unsigned int row = 0; row < num_rows; row++){
+      for (unsigned int col = 0; col < num_cols; col++){
         ss >> temp_val;
         if(temp_val == 255){ 
           origin_map_[row][col][layer] = 0;
@@ -55,20 +56,18 @@ void MapHandler::load_map()
     layer++;
   }
 
+  for(unsigned int i = 0; i < map_size_[2]; i++)
+  {
+    height_to_layer_map_[layer_heights[i]] = i;
+  }
+
   fill_empty_boxes();
   bloat_map(2);
 
-  work_map_ = origin_map_;
-  start_.x = 30;
-  start_.y = 200;
-  start_.z = 9;
-  goal_.x = 200;
-  goal_.y = 320;
-  goal_.z = 5;
-  
-  flood_fill();
-  generate_path();
-  print_map(origin_map_);
+  Point<double> start = {1.5, 10, 2.25};
+  Point<double> goal = {10.22, 16, 1.5};
+  generate_path(start, goal);
+  print_map(work_map_);
 }
 
 void MapHandler::bloat_map(int num_of_cells)
@@ -174,19 +173,23 @@ void MapHandler::find_boxes(std::vector<std::vector<int>>& grid) {
   }
 }
 
-void MapHandler::flood_fill()
+std::vector<std::vector<std::vector<bool>>> MapHandler::flood_fill(Point<unsigned int> start, Point<unsigned int> goal)
 {
+  std::vector<std::vector<std::vector<bool>>> visited(map_size_[0], std::vector<std::vector<bool>>(map_size_[1], std::vector<bool>(map_size_[2])));
   std::queue<Point<unsigned int>> elemet_queue;
-  visited_[start_.x][start_.y][start_.z] = true;
-  work_map_[start_.x][start_.y][start_.z] = 2;
-  elemet_queue.push(start_);
+
+  work_map_ = origin_map_;
+  visited[start.x][start.y][start.z] = true;
+  work_map_[start.x][start.y][start.z] = 2;
+  elemet_queue.push(start);
+
   while(!elemet_queue.empty())
   {
     Point<unsigned int> actual_element = elemet_queue.front();
     elemet_queue.pop();
-    if (actual_element.x == goal_.x && actual_element.y == goal_.y && actual_element.z == goal_.z)
+    if (actual_element.x == goal.x && actual_element.y == goal.y && actual_element.z == goal.z)
     {
-        return;
+        return visited;
     }
 
     std::vector<Point<unsigned int>> neighbors = {
@@ -211,34 +214,57 @@ void MapHandler::flood_fill()
         if (point.x < work_map_.size() && point.y < work_map_[0].size() && 
             point.z < work_map_[0][0].size() && work_map_[point.x][point.y][point.z] != 1)
         {
-            if (!visited_[point.x][point.y][point.z])
+            if (!visited[point.x][point.y][point.z])
             {
-                visited_[point.x][point.y][point.z] = true;
+                visited[point.x][point.y][point.z] = true;
                 elemet_queue.push(point);
                 work_map_[point.x][point.y][point.z] = work_map_[actual_element.x][actual_element.y][actual_element.z] + 1;
             }
         }
     }
   }
+
+  return visited;
 }
 
-std::vector<Point<unsigned int>> MapHandler::generate_path()
+bool MapHandler::generate_path(Point<double> start, Point<double> goal)
 {
-  if (!visited_[goal_.x][goal_.y][goal_.z])
+  std::vector<std::vector<std::vector<bool>>> visited;
+  Point<unsigned int> local_start, local_goal;
+
+  // Transform [m] to vector indexes
+  local_start.x = static_cast<unsigned int>((start.x*100)/GRID_SIZE_XY);
+  local_start.y = static_cast<unsigned int>((start.y*100)/GRID_SIZE_XY);
+  local_start.z = static_cast<unsigned int>(height_to_layer_map_[start.z]);
+  local_goal.x = static_cast<unsigned int>((goal.x*100)/GRID_SIZE_XY);
+  local_goal.y = static_cast<unsigned int>((goal.y*100)/GRID_SIZE_XY);
+  local_goal.z = static_cast<unsigned int>(height_to_layer_map_[goal.z]);
+
+  if(origin_map_[local_start.x][local_start.y][local_start.z] != 0)
   {
-      return path_;
+    std::cout << "Invalid start point!!!" << std::endl;
+    return false;
+  }
+  else if(origin_map_[local_goal.x][local_goal.y][local_goal.z] != 0)
+  {
+    std::cout << "Invalid goal point!!!" << std::endl;
+    return false;
+  }
+
+  visited = flood_fill(local_start, local_goal);
+  if (!visited[local_goal.x][local_goal.y][local_goal.z])
+  { 
+    std::cout << "Couldn't reach goal!!!" << std::endl;
+    return false;
   }
 
   std::vector<bool> actual_diff_xyz = {false, false, false};
   std::vector<bool> last_diff_xyz = {true, true, true};
-  Point<unsigned int> point = goal_;
-  int cost = work_map_[goal_.x][goal_.y][goal_.z];
-  while (point.x != start_.x || point.y != start_.y)
+  Point<unsigned int> point = local_goal;
+  int cost = work_map_[local_goal.x][local_goal.y][local_goal.z];
+  while (point.x != local_start.x || point.y != local_start.y || point.z != local_start.z)
   {
       path_.push_back(point);
-
-      std::cout << "ax: " << actual_diff_xyz[0] << "  y: " << actual_diff_xyz[1] << "  z: " << actual_diff_xyz[2] << "   ";
-      std::cout << "lx: " << last_diff_xyz[0] << "  y: " << last_diff_xyz[1] << "  z: " << last_diff_xyz[2] << "   ";
 
       std::vector<Point<unsigned int>> neighbors = {
         {point.x+1, point.y, point.z}, {point.x-1, point.y, point.z},
@@ -260,7 +286,7 @@ std::vector<Point<unsigned int>> MapHandler::generate_path()
       for (const Point<unsigned int>& neighbor : neighbors)
       {
           if (neighbor.x < work_map_.size() && neighbor.y < work_map_[0].size() && 
-              neighbor.z < work_map_[0][0].size() && visited_[neighbor.x][neighbor.y][neighbor.z])
+              neighbor.z < work_map_[0][0].size() && visited[neighbor.x][neighbor.y][neighbor.z])
           {
               if (work_map_[neighbor.x][neighbor.y][neighbor.z] == cost - 1)
               {
@@ -280,23 +306,25 @@ std::vector<Point<unsigned int>> MapHandler::generate_path()
           }
       }
   }
-  path_.push_back(start_);
-  waypoints_.push_back(start_);
+
+  path_.push_back(local_start);
+  waypoints_.push_back(local_start);
   std::reverse(path_.begin(), path_.end());
+  std::reverse(waypoints_.begin(), waypoints_.end());
 
-
-
+  work_map_ = origin_map_;
   for(Point<unsigned int> point : path_)
   {
-    origin_map_[point.x][point.y][point.z] = 444;
+    work_map_[point.x][point.y][point.z] = 444;
   }
 
   for(Point<unsigned int> point : waypoints_)
   {
-    origin_map_[point.x][point.y][point.z] = 111;
+    work_map_[point.x][point.y][point.z] = 111;
+    //std::cout << "x: " << point.x << "  y: " << point.y << "  z: " << point.z << std::endl;
   }
     
-  return path_;
+  return true;
 }
 
 void MapHandler::print_map(std::vector<std::vector<std::vector<int>>>& map)
