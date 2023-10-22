@@ -18,8 +18,8 @@ private:
   void connect_to_mavros();
   void set_mode(std::string mode);
   void arm_throttle();
-  void takeoff(int height);
-  void setup_subscribers();
+  void takeoff(double height);
+  void perform_waypoint_action();
 
   void local_pos_subscriber();
   rclcpp::Subscription<mavros_msgs::msg::State>::SharedPtr state_sub_;
@@ -29,11 +29,19 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr
       local_pos_sub_;
   void callback_local_pos(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+  void autonomous_mission();
+  bool go_to_waypoint(geometry_msgs::msg::PoseStamped waypoint,
+                      double tolerance);
 
-  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr local_pos_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr
+      waypoint_pose_pub_;
   rclcpp::Client<mavros_msgs::srv::CommandBool>::SharedPtr arming_client_;
   rclcpp::Client<mavros_msgs::srv::SetMode>::SharedPtr set_mode_client_;
   rclcpp::Client<mavros_msgs::srv::CommandTOL>::SharedPtr takeoff_client_;
   mavros_msgs::msg::State current_state_;
   geometry_msgs::msg::PoseStamped current_local_pos_;
+  geometry_msgs::msg::PoseStamped waypoint_location_;
+  bool taken_off_ = false;
+  int waypoint_index_;
+  std::vector<Point<double>> waypoints;
 };
