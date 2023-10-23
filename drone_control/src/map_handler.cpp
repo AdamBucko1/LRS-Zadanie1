@@ -4,6 +4,8 @@ MapHandler::MapHandler() :
 origin_map_(0, std::vector<std::vector<int>>(0, std::vector<int>(0)))
 {
   load_map();
+  fill_empty_boxes();
+  bloat_map(2);
 }
 
 void MapHandler::load_map()
@@ -52,6 +54,20 @@ void MapHandler::load_map()
       }
     }
 
+    // Transform map to cartesian coordinates
+    std::vector<std::vector<unsigned int>> slice(288 , std::vector<unsigned int> (366));
+    for(unsigned int row = 0; row < origin_map_.size(); row++) {
+      for(unsigned int col = 0; col < origin_map_[0].size(); col++) {
+        slice[row][col] = origin_map_[row][col][layer];
+      }
+    }
+    slice = cv_to_cartesian(slice);
+    for(unsigned int row = 0; row < origin_map_.size(); row++) {
+      for(unsigned int col = 0; col < origin_map_[0].size(); col++) {
+        origin_map_[row][col][layer] = slice[row][col];
+      }
+    }
+
     infile.close();
     layer++;
   }
@@ -62,12 +78,12 @@ void MapHandler::load_map()
     layer_to_height_map_[i] = layer_heights[i];
   }
 
-  fill_empty_boxes();
-  bloat_map(2);
+  work_map_ = origin_map_;
 
-  Point<double> start = {1.5, 10, 2.25};
-  Point<double> goal = {10.22, 16, 1.5};
-  generate_path(start, goal);
+  Point<double> start = {15, 4, 2.25};
+  Point<double> goal = {22, 16, 1.5};
+  //generate_path(start, goal);
+  //work_map_[300][50][9] = 999;
   print_map(work_map_);
 }
 
@@ -343,10 +359,27 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal)
   return true;
 }
 
+std::vector<std::vector<unsigned int>> MapHandler::cv_to_cartesian(const std::vector<std::vector<unsigned int>>& cv_map) {
+    unsigned int height = cv_map.size();
+    unsigned int width = cv_map[0].size(); 
+
+    std::vector<std::vector<unsigned int>> cartesian_map(height, std::vector<unsigned int>(width, 0));
+
+    for (unsigned int row = 0; row < height; ++row) {
+        for (unsigned int col = 0; col < width; ++col) {
+            unsigned int cv_value = cv_map[row][col];
+            unsigned int cartesian_row = height - row - 1;
+            cartesian_map[cartesian_row][col] = cv_value;
+        }
+    }
+
+    return cartesian_map;
+}
+
 void MapHandler::print_map(std::vector<std::vector<std::vector<int>>>& map)
 {
   for(unsigned int layer = 0; layer < map[0][0].size(); layer++) {
-    for(unsigned int row = 0; row < map.size(); row++) {
+    for(int row = map.size() - 1; row >= 0; row--) {
       for(unsigned int col = 0; col < map[0].size(); col++) {
 
         if(map[row][col][layer] < 10)
