@@ -1,3 +1,4 @@
+#include <drone_control/map_handler.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <mavros_msgs/msg/state.hpp>
 #include <mavros_msgs/srv/command_bool.hpp>
@@ -55,4 +56,6 @@ private:
     FINISHED
   };
   MissionState mission_state;
+
+  MapHandler map_handler_;
 };
