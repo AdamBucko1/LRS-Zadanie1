@@ -6,8 +6,8 @@ class MapHandler
 public:
     MapHandler();
     bool generate_path(Point<double> start, Point<double> goal);
-    inline std::vector<Point<unsigned int>> get_waypoints() { return waypoints_; };
-    inline std::vector<Point<unsigned int>> get_path() { return path_; };
+    inline std::vector<Point<double>> get_waypoints() { return waypoints_; };
+    inline std::vector<Point<double>> get_path() { return path_; };
 
 private:
     void load_map();
@@ -23,10 +23,11 @@ private:
     std::vector<std::vector<std::vector<int>>> work_map_;
     std::vector<unsigned int> map_size_;
     std::map<double, int> height_to_layer_map_;
+    std::map<int, double> layer_to_height_map_;
     static constexpr unsigned int GRID_SIZE_XY = 5;
 
 
     // Map navigation
-    std::vector<Point<unsigned int>> waypoints_;
-    std::vector<Point<unsigned int>> path_;
+    std::vector<Point<double>> waypoints_;
+    std::vector<Point<double>> path_;
 };

@@ -8,7 +8,7 @@ origin_map_(0, std::vector<std::vector<int>>(0, std::vector<int>(0)))
 
 void MapHandler::load_map()
 {
-  std::string resources_path = "src/LRS-Zadanie1/drone_control/resources";
+  std::string resources_path = get_resource_path();
   std::string ws_path = get_ws_path();
   std::vector<std::string> map_paths{"map_025.pgm","map_075.pgm","map_080.pgm","map_100.pgm",
                                      "map_125.pgm","map_150.pgm","map_175.pgm","map_180.pgm",
@@ -59,6 +59,7 @@ void MapHandler::load_map()
   for(unsigned int i = 0; i < map_size_[2]; i++)
   {
     height_to_layer_map_[layer_heights[i]] = i;
+    layer_to_height_map_[i] = layer_heights[i];
   }
 
   fill_empty_boxes();
@@ -231,6 +232,8 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal)
 {
   std::vector<std::vector<std::vector<bool>>> visited;
   Point<unsigned int> local_start, local_goal;
+  std::vector<Point<unsigned int>> local_path, local_waypoints;
+  Point<double>  transformed_point;
 
   // Transform [m] to vector indexes
   local_start.x = static_cast<unsigned int>((start.x*100)/GRID_SIZE_XY);
@@ -261,10 +264,16 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal)
   std::vector<bool> actual_diff_xyz = {false, false, false};
   std::vector<bool> last_diff_xyz = {true, true, true};
   Point<unsigned int> point = local_goal;
+
   int cost = work_map_[local_goal.x][local_goal.y][local_goal.z];
   while (point.x != local_start.x || point.y != local_start.y || point.z != local_start.z)
   {
-      path_.push_back(point);
+      transformed_point.x = static_cast<double>((point.x/100)*GRID_SIZE_XY);
+      transformed_point.y = static_cast<double>((point.y/100)*GRID_SIZE_XY);
+      transformed_point.z = static_cast<double>(layer_to_height_map_[point.z]);
+
+      path_.push_back(transformed_point);
+      local_path.push_back(point);
 
       std::vector<Point<unsigned int>> neighbors = {
         {point.x+1, point.y, point.z}, {point.x-1, point.y, point.z},
@@ -298,6 +307,7 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal)
                   if(actual_diff_xyz[0] != last_diff_xyz[0] || actual_diff_xyz[1] != last_diff_xyz[1] || actual_diff_xyz[2] != last_diff_xyz[2])
                   {
                     waypoints_.push_back(path_.back());
+                    local_waypoints.push_back(local_path.back());
                   }
 
                   last_diff_xyz = actual_diff_xyz;
@@ -307,21 +317,27 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal)
       }
   }
 
-  path_.push_back(local_start);
-  waypoints_.push_back(local_start);
+  path_.push_back(start);
+  waypoints_.push_back(start);
+  local_path.push_back(local_start);
+  local_waypoints.push_back(local_start);
   std::reverse(path_.begin(), path_.end());
   std::reverse(waypoints_.begin(), waypoints_.end());
 
   work_map_ = origin_map_;
-  for(Point<unsigned int> point : path_)
+  for(Point<unsigned int> point : local_path)
   {
     work_map_[point.x][point.y][point.z] = 444;
   }
 
-  for(Point<unsigned int> point : waypoints_)
+  for(Point<unsigned int> point : local_waypoints)
   {
     work_map_[point.x][point.y][point.z] = 111;
-    //std::cout << "x: " << point.x << "  y: " << point.y << "  z: " << point.z << std::endl;
+  }
+
+  for(Point<double> point : waypoints_)
+  {
+    std::cout << "x: " << point.x << "  y: " << point.y << "  z: " << point.z << std::endl;
   }
     
   return true;
