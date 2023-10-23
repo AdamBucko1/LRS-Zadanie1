@@ -1,3 +1,4 @@
+#include "drone_control/map_handler.hpp"
 #include <drone_control/map_handler.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <mavros_msgs/msg/state.hpp>
@@ -21,6 +22,10 @@ private:
   void arm_throttle();
   void takeoff(double height);
   void perform_waypoint_action();
+  void readCSVData(const std::string &filename,
+                   std::vector<Point<double>> &main_waypoints,
+                   std::vector<std::string> &precision,
+                   std::vector<std::string> &command);
 
   void local_pos_subscriber();
   rclcpp::Subscription<mavros_msgs::msg::State>::SharedPtr state_sub_;
@@ -44,7 +49,7 @@ private:
   geometry_msgs::msg::PoseStamped waypoint_location_;
   bool taken_off_ = false;
   int waypoint_index_;
-  std::vector<Point<double>> waypoints;
+  std::vector<Point<double>> main_waypoints;
   enum MissionState {
     INIT,
     CONNECTED,

@@ -1,5 +1,5 @@
-#include <drone_control/drone_control_node.hpp>
 #include <chrono>
+#include <drone_control/drone_control_node.hpp>
 #include <thread>
 
 using namespace std::chrono_literals;
@@ -14,11 +14,57 @@ void DroneControlNode::init() {
   waypoint_location_.pose.position.y = 1;
   waypoint_location_.pose.position.z = 1;
   waypoint_index_ = 0;
-  std::vector<Point<double>> waypoints = function();
+  std::vector<Point<double>> main_waypoints;
+  Point<double> std::vector<std::string> precision;
+  std::vector<std::string> command;
+  std::vector<Point<double>> path_main_waypoints;
+  readCSVData("/home/adam/Downloads/data.csv", main_waypoints, precision,
+              command);
+  for (int waypoint_index = 0; waypoint_index < main_waypoints.size();
+       waypoint_index++) {
+    map_handler_.generate_path(main_waypoints[waypoint_index],
+                               main_waypoints[waypoint_index + 1]);
+    for (Point<double> point : map_handler_.get_main_waypoints()) {
+      path_main_waypoints.push_back(point);
+    }
+  }
   setup_publishers();
   setup_subscribers();
   setup_services();
   setup_clients();
+}
+void DroneControlNode::readCSVData(const std::string &filename,
+                                   std::vector<Point<double>> &main_waypoints,
+                                   std::vector<std::string> &precision,
+                                   std::vector<std::string> &command) {
+  std::ifstream infile(filename);
+
+  if (!infile.is_open()) {
+    std::cerr << "Failed to open file " << filename << std::endl;
+    return;
+  }
+
+  std::string line;
+  while (std::getline(infile, line)) {
+    std::istringstream iss(line);
+    Point<double> pt;
+
+    char delimiter;
+    if (iss >> pt.x >> delimiter >> pt.y >> delimiter >> pt.z) {
+      main_waypoints.push_back(pt);
+    } else {
+      continue;
+    }
+
+    std::string prec, cmd;
+    if (iss >> delimiter >> prec >> delimiter >> cmd) {
+      precision.push_back(prec);
+      command.push_back(cmd);
+    }
+  }
+
+  infile.close();
+  return;
 }
 
 void DroneControlNode::setup_publishers() {
@@ -106,14 +152,14 @@ void DroneControlNode::autonomous_mission() {
     perform_waypoint_action();
 
   case ACTION_PERFORMED:
-    if (waypoint_index_ == waypoints.size()) {
+    if (waypoint_index_ == main_waypoints.size()) {
       RCLCPP_INFO(this->get_logger(), "Last Waypoint Reached");
       mission_state = FINISHED;
     } else {
       waypoint_index_++;
-      waypoint_location_.pose.position.x = waypoints[waypoint_index_].x;
-      waypoint_location_.pose.position.y = waypoints[waypoint_index_].y;
-      waypoint_location_.pose.position.z = waypoints[waypoint_index_].z;
+      waypoint_location_.pose.position.x = main_waypoints[waypoint_index_].x;
+      waypoint_location_.pose.position.y = main_waypoints[waypoint_index_].y;
+      waypoint_location_.pose.position.z = main_waypoints[waypoint_index_].z;
     }
     break;
 
