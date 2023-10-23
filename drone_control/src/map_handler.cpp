@@ -268,8 +268,8 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal)
   int cost = work_map_[local_goal.x][local_goal.y][local_goal.z];
   while (point.x != local_start.x || point.y != local_start.y || point.z != local_start.z)
   {
-      transformed_point.x = static_cast<double>((point.x/100)*GRID_SIZE_XY);
-      transformed_point.y = static_cast<double>((point.y/100)*GRID_SIZE_XY);
+      transformed_point.x = static_cast<double>((static_cast<double>(point.x)/100)*GRID_SIZE_XY);
+      transformed_point.y = static_cast<double>((static_cast<double>(point.y)/100)*GRID_SIZE_XY);
       transformed_point.z = static_cast<double>(layer_to_height_map_[point.z]);
 
       path_.push_back(transformed_point);
@@ -335,10 +335,10 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal)
     work_map_[point.x][point.y][point.z] = 111;
   }
 
-  for(Point<double> point : waypoints_)
-  {
-    std::cout << "x: " << point.x << "  y: " << point.y << "  z: " << point.z << std::endl;
-  }
+  // for(Point<double> point : waypoints_)
+  // {
+  //   std::cout << "x: " << point.x << "  y: " << point.y << "  z: " << point.z << std::endl;
+  // }
     
   return true;
 }
