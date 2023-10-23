@@ -44,4 +44,15 @@ private:
   bool taken_off_ = false;
   int waypoint_index_;
   std::vector<Point<double>> waypoints;
+  enum MissionState {
+    INIT,
+    CONNECTED,
+    GUIDED,
+    ARMED,
+    FLYING,
+    WAYPOINT_REACHED,
+    ACTION_PERFORMED,
+    FINISHED
+  };
+  MissionState mission_state;
 };

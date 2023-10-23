@@ -9,6 +9,7 @@ DroneControlNode::DroneControlNode() : Node("template_drone_control_node") {
 }
 
 void DroneControlNode::init() {
+  mission_state = INIT;
   waypoint_location_.pose.position.x = 1;
   waypoint_location_.pose.position.y = 1;
   waypoint_location_.pose.position.z = 1;
@@ -61,40 +62,67 @@ void DroneControlNode::setup_services() {}
 void DroneControlNode::autonomous_mission() {
 
   RCLCPP_INFO(this->get_logger(), "Autonomous mission called ");
-  if (current_state_.mode != "GUIDED") {
-    set_mode("GUIDED");
-    RCLCPP_INFO(this->get_logger(), "Setting mode to GUIDED");
-    return;
-  }
-  if (!current_state_.armed) {
-    arm_throttle();
-    RCLCPP_INFO(this->get_logger(), "Arming motors");
-    return;
-  }
-  if (!taken_off_) {
+  switch (mission_state) {
+  case INIT:
+    if (current_state_.connected) {
+      mission_state = CONNECTED;
+    }
+    break;
+  case CONNECTED:
+    if (current_state_.mode == "GUIDED") {
+      mission_state = GUIDED;
+    } else {
+      set_mode("GUIDED");
+      RCLCPP_INFO(this->get_logger(), "Setting mode to GUIDED");
+    }
+    break;
+
+  case GUIDED:
+    if (current_state_.armed) {
+      mission_state = ARMED;
+    } else {
+      arm_throttle();
+      RCLCPP_INFO(this->get_logger(), "Arming motors");
+    }
+    break;
+
+  case ARMED:
     RCLCPP_INFO(this->get_logger(), "sending takeoff");
     takeoff(0.25);
-    if (!taken_off_) {
-      std::this_thread::sleep_for(1s);
-      taken_off_ = true;
-    }
-  }
-  if (taken_off_) {
+    std::this_thread::sleep_for(1s);
+    mission_state = FLYING;
+
+    break;
+
+  case FLYING:
     if (go_to_waypoint(waypoint_location_, 0.05)) {
-      perform_waypoint_action();
-      if (waypoint_index_ == waypoints.size()) {
-        RCLCPP_INFO(this->get_logger(), "Last Waypoint Reached");
-        return;
-      }
+      mission_state = WAYPOINT_REACHED;
+    } else {
+      waypoint_pose_pub_->publish(waypoint_location_);
+    }
+    break;
+
+  case WAYPOINT_REACHED:
+    perform_waypoint_action();
+
+  case ACTION_PERFORMED:
+    if (waypoint_index_ == waypoints.size()) {
+      RCLCPP_INFO(this->get_logger(), "Last Waypoint Reached");
+      mission_state = FINISHED;
+    } else {
       waypoint_index_++;
       waypoint_location_.pose.position.x = waypoints[waypoint_index_].x;
       waypoint_location_.pose.position.y = waypoints[waypoint_index_].y;
       waypoint_location_.pose.position.z = waypoints[waypoint_index_].z;
     }
-    waypoint_pose_pub_->publish(waypoint_location_);
+    break;
+
+  default:
+    RCLCPP_INFO(this->get_logger(), "Nothing performed");
+    break;
   }
-  RCLCPP_INFO(this->get_logger(), "nothing sent");
 }
+
 bool DroneControlNode::go_to_waypoint(geometry_msgs::msg::PoseStamped waypoint,
                                       double tolerance) {
   double dx = current_local_pos_.pose.position.x - waypoint.pose.position.x;
