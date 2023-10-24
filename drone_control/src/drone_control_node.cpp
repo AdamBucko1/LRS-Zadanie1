@@ -9,23 +9,29 @@ DroneControlNode::DroneControlNode() : Node("template_drone_control_node") {
 }
 
 void DroneControlNode::init() {
+  spawn_position.x = 13.6;
+  spawn_position.y = 1.5;
+  spawn_position.z = 0;
+  start_posisiton = spawn_position;
+  start_posisiton.z = 0.25;
+
   mission_state = INIT;
-  waypoint_location_.pose.position.x = 1;
-  waypoint_location_.pose.position.y = 1;
-  waypoint_location_.pose.position.z = 1;
   waypoint_index_ = 0;
   std::vector<Point<double>> main_waypoints;
-  Point<double> std::vector<std::string> precision;
+  start_posisiton;
+  main_waypoints.push_back(start_posisiton);
+  std::vector<std::string> precision;
   std::vector<std::string> command;
-  std::vector<Point<double>> path_main_waypoints;
+  std::vector<Point<double>> path_waypoints;
   readCSVData("/home/adam/Downloads/data.csv", main_waypoints, precision,
               command);
-  for (int waypoint_index = 0; waypoint_index < main_waypoints.size();
-       waypoint_index++) {
-    map_handler_.generate_path(main_waypoints[waypoint_index],
-                               main_waypoints[waypoint_index + 1]);
-    for (Point<double> point : map_handler_.get_main_waypoints()) {
-      path_main_waypoints.push_back(point);
+  for (int waypoint_index_generate = 0;
+       waypoint_index_generate < main_waypoints.size();
+       waypoint_index_generate++) {
+    map_handler_.generate_path(main_waypoints[waypoint_index_generate],
+                               main_waypoints[waypoint_index_generate + 1]);
+    for (Point<double> point : map_handler_.get_waypoints()) {
+      path_waypoints.push_back(point);
     }
   }
   setup_publishers();
@@ -135,8 +141,11 @@ void DroneControlNode::autonomous_mission() {
   case ARMED:
     RCLCPP_INFO(this->get_logger(), "sending takeoff");
     takeoff(0.25);
-    std::this_thread::sleep_for(1s);
-    mission_state = FLYING;
+    double dz = current_local_pos_.pose.position.z - 0.25;
+    if (abs(dz) < 0.05) {
+      mission_state = FLYING;
+      waypoint_index_++;
+    }
 
     break;
 
@@ -152,14 +161,8 @@ void DroneControlNode::autonomous_mission() {
     perform_waypoint_action();
 
   case ACTION_PERFORMED:
-    if (waypoint_index_ == main_waypoints.size()) {
-      RCLCPP_INFO(this->get_logger(), "Last Waypoint Reached");
+    if (!select_next_waypoint()) {
       mission_state = FINISHED;
-    } else {
-      waypoint_index_++;
-      waypoint_location_.pose.position.x = main_waypoints[waypoint_index_].x;
-      waypoint_location_.pose.position.y = main_waypoints[waypoint_index_].y;
-      waypoint_location_.pose.position.z = main_waypoints[waypoint_index_].z;
     }
     break;
 
@@ -169,6 +172,19 @@ void DroneControlNode::autonomous_mission() {
   }
 }
 
+bool DroneControlNode::select_next_waypoint() {
+  if (waypoint_index_ == main_waypoints.size()) {
+    RCLCPP_INFO(this->get_logger(), "Last Waypoint Reached");
+    return false;
+
+  } else {
+    waypoint_index_++;
+    waypoint_location_.pose.position.x = main_waypoints[waypoint_index_].x;
+    waypoint_location_.pose.position.y = main_waypoints[waypoint_index_].y;
+    waypoint_location_.pose.position.z = main_waypoints[waypoint_index_].z;
+    return true;
+  }
+}
 bool DroneControlNode::go_to_waypoint(geometry_msgs::msg::PoseStamped waypoint,
                                       double tolerance) {
   double dx = current_local_pos_.pose.position.x - waypoint.pose.position.x;

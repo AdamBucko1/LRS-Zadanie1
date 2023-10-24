@@ -21,6 +21,7 @@ private:
   void set_mode(std::string mode);
   void arm_throttle();
   void takeoff(double height);
+  bool select_next_waypoint();
   void perform_waypoint_action();
   void readCSVData(const std::string &filename,
                    std::vector<Point<double>> &main_waypoints,
@@ -50,6 +51,8 @@ private:
   bool taken_off_ = false;
   int waypoint_index_;
   std::vector<Point<double>> main_waypoints;
+  Point<double> start_posisiton;
+  Point<double> spawn_position;
   enum MissionState {
     INIT,
     CONNECTED,
