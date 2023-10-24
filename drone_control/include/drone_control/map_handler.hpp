@@ -11,6 +11,8 @@ public:
 private:
   void load_map();
   void print_map(std::vector<std::vector<std::vector<int>>> &map);
+  std::vector<std::vector<unsigned int>>
+  cv_to_cartesian(const std::vector<std::vector<unsigned int>> &cv_layer);
   std::vector<std::vector<std::vector<bool>>>
   flood_fill(Point<unsigned int> start, Point<unsigned int> goal);
   void bloat_map(int num_of_cells);
@@ -20,12 +22,14 @@ private:
   void fill_empty_boxes();
 
 private:
-  std::vector<std::vector<std::vector<int>>> origin_map_;
+  std::vector<std::vector<std::vector<int>>> origin_map_; //[y][x][z]
   std::vector<std::vector<std::vector<int>>> work_map_;
-  std::vector<unsigned int> map_size_;
+  std::vector<unsigned int> map_size_; //[y][x][z]
   std::map<double, int> height_to_layer_map_;
   std::map<int, double> layer_to_height_map_;
   static constexpr unsigned int GRID_SIZE_XY = 5;
+  static constexpr unsigned int OFFSET_X = 6;
+  static constexpr unsigned int OFFSET_Y = 23;
 
   // Map navigation
   std::vector<Point<double>> waypoints_;
