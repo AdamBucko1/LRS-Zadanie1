@@ -253,6 +253,8 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal) {
   Point<unsigned int> local_start, local_goal;
   std::vector<Point<unsigned int>> local_path, local_waypoints;
   Point<double> transformed_point;
+  path_.clear();
+  waypoints_.clear();
 
   // Transform [m] to vector indexes
   local_start.x =
@@ -306,22 +308,22 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal) {
         {point.x + 1, point.y - 1, point.z},
         {point.x - 1, point.y + 1, point.z},
 
-        {point.x + 1, point.y, point.z},
+        {point.x + 1, point.y, point.z + 1},
         {point.x - 1, point.y, point.z + 1},
-        {point.x, point.y + 1, point.z},
+        {point.x, point.y + 1, point.z + 1},
         {point.x, point.y - 1, point.z + 1},
-        {point.x + 1, point.y + 1, point.z},
+        {point.x + 1, point.y + 1, point.z + 1},
         {point.x - 1, point.y - 1, point.z + 1},
-        {point.x + 1, point.y - 1, point.z},
+        {point.x + 1, point.y - 1, point.z + 1},
         {point.x - 1, point.y + 1, point.z + 1},
 
-        {point.x + 1, point.y, point.z},
+        {point.x + 1, point.y, point.z - 1},
         {point.x - 1, point.y, point.z - 1},
-        {point.x, point.y + 1, point.z},
+        {point.x, point.y + 1, point.z - 1},
         {point.x, point.y - 1, point.z - 1},
-        {point.x + 1, point.y + 1, point.z},
+        {point.x + 1, point.y + 1, point.z - 1},
         {point.x - 1, point.y - 1, point.z - 1},
-        {point.x + 1, point.y - 1, point.z},
+        {point.x + 1, point.y - 1, point.z - 1},
         {point.x - 1, point.y + 1, point.z - 1}};
 
     for (const Point<unsigned int> &neighbor : neighbors) {
@@ -330,13 +332,12 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal) {
           visited[neighbor.y][neighbor.x][neighbor.z]) {
         if (work_map_[neighbor.y][neighbor.x][neighbor.z] == cost - 1) {
           cost = work_map_[neighbor.y][neighbor.x][neighbor.z];
-          if (abs(neighbor.x - point.x) > 0)
-            actual_diff_xyz[0] = true;
-          if (abs(neighbor.y - point.y) > 0)
-            actual_diff_xyz[1] = true;
-          if (abs(neighbor.z - point.z) > 0)
-            actual_diff_xyz[2] = true;
-
+          abs(neighbor.x - point.x) > 0 ? actual_diff_xyz[0] = true
+                                        : actual_diff_xyz[0] = false;
+          abs(neighbor.y - point.y) > 0 ? actual_diff_xyz[1] = true
+                                        : actual_diff_xyz[1] = false;
+          abs(neighbor.z - point.z) > 0 ? actual_diff_xyz[2] = true
+                                        : actual_diff_xyz[2] = false;
           if (actual_diff_xyz[0] != last_diff_xyz[0] ||
               actual_diff_xyz[1] != last_diff_xyz[1] ||
               actual_diff_xyz[2] != last_diff_xyz[2]) {

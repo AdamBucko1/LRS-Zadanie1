@@ -17,5 +17,6 @@ inline std::string get_ws_path() {
 }
 
 inline std::string get_resource_path() {
-  return "src/LRS-Zadanie1/drone_control/resources";
+  return "src/lrs_zad_1/drone_control/resources";
 }
+// home/adam/nvapriltag_foxy/src/lrs_zad_1/drone_control/resources/map_025.pgm

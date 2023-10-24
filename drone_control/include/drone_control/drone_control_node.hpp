@@ -21,7 +21,9 @@ private:
   void set_mode(std::string mode);
   void arm_throttle();
   void takeoff(double height);
-  bool select_next_waypoint();
+  bool select_next_waypoint(geometry_msgs::msg::PoseStamped &waypoint_location_,
+                            std::vector<Point<double>> waypoints, int &index,
+                            bool main_waypoint);
   void perform_waypoint_action();
   void readCSVData(const std::string &filename,
                    std::vector<Point<double>> &main_waypoints,
@@ -37,8 +39,8 @@ private:
       local_pos_sub_;
   void callback_local_pos(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
   void autonomous_mission();
-  bool go_to_waypoint(geometry_msgs::msg::PoseStamped waypoint,
-                      double tolerance);
+  bool check_waypoint_reached(geometry_msgs::msg::PoseStamped waypoint,
+                              double tolerance);
 
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr
       waypoint_pose_pub_;
@@ -48,11 +50,15 @@ private:
   mavros_msgs::msg::State current_state_;
   geometry_msgs::msg::PoseStamped current_local_pos_;
   geometry_msgs::msg::PoseStamped waypoint_location_;
+  geometry_msgs::msg::PoseStamped path_waypoint_;
   bool taken_off_ = false;
   int waypoint_index_;
-  std::vector<Point<double>> main_waypoints;
+  int path_waypoint_index_;
+  std::vector<std::vector<Point<double>>> path_waypoints_;
+  std::vector<Point<double>> main_waypoints_;
   Point<double> start_posisiton;
   Point<double> spawn_position;
+  double start_takeoff_height_;
   enum MissionState {
     INIT,
     CONNECTED,
