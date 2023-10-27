@@ -4,7 +4,7 @@ MapHandler::MapHandler()
     : origin_map_(0, std::vector<std::vector<int>>(0, std::vector<int>(0))) {
   load_map();
   fill_empty_boxes();
-  bloat_map(2);
+  bloat_map(5);
 }
 
 void MapHandler::load_map() {
@@ -290,9 +290,9 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal) {
   while (point.x != local_start.x || point.y != local_start.y ||
          point.z != local_start.z) {
     transformed_point.x = static_cast<double>(
-        (static_cast<double>(point.x) / 100) * GRID_SIZE_XY);
+        (static_cast<double>((point.x - OFFSET_X)) / 100) * GRID_SIZE_XY);
     transformed_point.y = static_cast<double>(
-        (static_cast<double>(point.y) / 100) * GRID_SIZE_XY);
+        (static_cast<double>((point.y - OFFSET_Y)) / 100) * GRID_SIZE_XY);
     transformed_point.z = static_cast<double>(layer_to_height_map_[point.z]);
 
     path_.push_back(transformed_point);
@@ -356,18 +356,35 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal) {
   waypoints_.push_back(start);
   local_path.push_back(local_start);
   local_waypoints.push_back(local_start);
+  std::reverse(local_path.begin(), local_path.end());
   std::reverse(path_.begin(), path_.end());
   std::reverse(waypoints_.begin(), waypoints_.end());
 
   work_map_ = origin_map_;
+  std::cout << " lx: " << local_start.x << " ly: " << local_start.y
+            << " lz: " << local_start.z << std ::endl;
+  std::cout << " lx: " << start.x << " ly: " << start.y << " lz: " << start.z
+            << std ::endl;
   for (Point<unsigned int> point : local_path) {
     work_map_[point.y][point.x][point.z] = 444;
+    std::cout << " x: " << point.x << " y: " << point.y << " z: " << point.z
+              << std ::endl;
   }
 
   for (Point<unsigned int> point : local_waypoints) {
     work_map_[point.y][point.x][point.z] = 111;
   }
 
+  for (Point<double> point : waypoints_) {
+    std::cout << " x: " << point.x << " y: " << point.y << " z: " << point.z
+              << std ::endl;
+  }
+  std::cout
+      << "**************************************\n*****************************"
+         "*********\n**************************************\n******************"
+         "********************\n**************************************\n"
+      << std::endl;
+  // print_map(work_map_);
   return true;
 }
 
@@ -403,9 +420,6 @@ void MapHandler::print_map(std::vector<std::vector<std::vector<int>>> &map) {
                     << " ";
         else if (map[row][col][layer] < 200)
           std::cout << "\033[36m" << std::setw(3) << map[row][col][layer]
-                    << " ";
-        else
-          std::cout << "\033[31m" << std::setw(3) << map[row][col][layer]
                     << " ";
       }
       std::cout << std::endl;
