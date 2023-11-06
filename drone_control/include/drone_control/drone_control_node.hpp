@@ -1,4 +1,4 @@
-#include "drone_control/map_handler.hpp"
+#include <drone_control/point_cloud_handler.hpp>
 #include <drone_control/map_handler.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <mavros_msgs/msg/state.hpp>
@@ -89,4 +89,5 @@ private:
   MissionState mission_state;
   ActionState action_state;
   MapHandler map_handler_;
+  //PointCloudHandler map_handler_;
 };

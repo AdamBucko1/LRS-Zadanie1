@@ -13,6 +13,7 @@
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>mavros_msgs</depend>
+  <depend>PCL 1.2</depend>
   
 
   <test_depend>ament_lint_auto</test_depend>

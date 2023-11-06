@@ -11,13 +11,10 @@ public:
 private:
   void load_map();
   void print_map(std::vector<std::vector<std::vector<int>>> &map);
-  std::vector<std::vector<unsigned int>>
-  cv_to_cartesian(const std::vector<std::vector<unsigned int>> &cv_layer);
-  std::vector<std::vector<std::vector<bool>>>
-  flood_fill(Point<unsigned int> start, Point<unsigned int> goal);
+  std::vector<std::vector<unsigned int>> cv_to_cartesian(const std::vector<std::vector<unsigned int>> &cv_layer);
+  std::vector<std::vector<std::vector<bool>>> flood_fill(Point<unsigned int> start, Point<unsigned int> goal);
   void bloat_map(int num_of_cells);
-  void flood_fill_room(std::vector<std::vector<int>> &grid, unsigned int x,
-                       unsigned int y);
+  void flood_fill_room(std::vector<std::vector<int>> &grid, unsigned int x, unsigned int y);
   void find_boxes(std::vector<std::vector<int>> &grid);
   void fill_empty_boxes();
 

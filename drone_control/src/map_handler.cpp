@@ -379,11 +379,7 @@ bool MapHandler::generate_path(Point<double> start, Point<double> goal) {
     std::cout << " x: " << point.x << " y: " << point.y << " z: " << point.z
               << std ::endl;
   }
-  std::cout
-      << "**************************************\n*****************************"
-         "*********\n**************************************\n******************"
-         "********************\n**************************************\n"
-      << std::endl;
+  
   // print_map(work_map_);
   return true;
 }
