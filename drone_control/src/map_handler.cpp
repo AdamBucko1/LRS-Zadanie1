@@ -4,7 +4,7 @@ MapHandler::MapHandler()
     : origin_map_(0, std::vector<std::vector<int>>(0, std::vector<int>(0))) {
   load_map();
   fill_empty_boxes();
-  bloat_map(5);
+  bloat_map(8);
 }
 
 void MapHandler::load_map() {

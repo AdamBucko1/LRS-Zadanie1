@@ -174,6 +174,7 @@ void DroneControlNode::setup_publishers() {
 void DroneControlNode::setup_subscribers() {
   drone_state_subscriber();
   local_pos_subscriber();
+  // std::cout<<"initialized"<<std::endl;
 }
 void DroneControlNode::drone_state_subscriber() {
   state_sub_ = this->create_subscription<mavros_msgs::msg::State>(
@@ -408,8 +409,8 @@ void DroneControlNode::perform_waypoint_action() {
       action_state = NONE;
     } else {
       RCLCPP_INFO(this->get_logger(), "Mission yaw %f, current yaw %f",
-                  mission_yaw_, current_rpy[2]);
-      std::vector<double> wanted_rpy = {0, 0, 90 * M_PI / 180.0};
+                  mission_yaw_ * M_PI / 180.0, current_rpy[2]);
+      std::vector<double> wanted_rpy = {0, 0, mission_yaw_ * M_PI / 180.0};
       path_waypoint_.pose.orientation = getQuaternionFromRPY(wanted_rpy);
       waypoint_pose_pub_->publish(path_waypoint_);
     }
