@@ -7,8 +7,24 @@ PointCloudHandler::PointCloudHandler()
     : origin_map_(0, std::vector<std::vector<int>>(0, std::vector<int>(0))) 
 {
   load_map();
-  // fill_empty_boxes();
-  // bloat_map(8);
+  fill_empty_boxes();
+  bloat_map(2);
+  print_map(origin_map_);
+
+  // std::string resources_path = get_resource_path();
+  // std::string ws_path = get_ws_path();
+  // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+
+  // if (pcl::io::loadPCDFile<pcl::PointXYZ> (ws_path + "/" + resources_path + "/map.pcd", *cloud) == -1) 
+  // {
+  //   return;
+  // }
+
+  // pcl::visualization::CloudViewer viewer ("Simple Cloud Viewer");
+  // viewer.showCloud (cloud);
+  // while (!viewer.wasStopped ())
+  // {
+  // }
 }
 
 int main()
@@ -42,9 +58,10 @@ bool PointCloudHandler::load_map()
   }
 
   // Calculate the size of the origin_map_
-  int row_size = static_cast<int>(std::ceil((maxPoint.y - minPoint.y) / 0.05)) + 1;
-  int column_size = static_cast<int>(std::ceil((maxPoint.x - minPoint.x) / 0.05)) + 1;
-  int layer_size = static_cast<int>(std::ceil((maxPoint.z - minPoint.z) / 0.05)) + 1;
+  unsigned int row_size = static_cast<unsigned int>(std::ceil((maxPoint.y - minPoint.y) / 0.05)) + 1;
+  unsigned int column_size = static_cast<unsigned int>(std::ceil((maxPoint.x - minPoint.x) / 0.05)) + 1;
+  unsigned int layer_size = static_cast<unsigned int>(std::ceil((maxPoint.z - minPoint.z) / 0.05)) + 1;
+  map_size_ = {row_size, column_size, layer_size};
 
   // Resize the origin_map_
   origin_map_.resize(row_size, std::vector<std::vector<int>>(column_size, std::vector<int>(layer_size, 0)));
@@ -64,14 +81,6 @@ bool PointCloudHandler::load_map()
     origin_map_[y][x][z] = 1; 
   }
 
-  // pcl::visualization::CloudViewer viewer ("Simple Cloud Viewer");
-  // viewer.showCloud (downsampled_cloud);
-  // while (!viewer.wasStopped ())
-  // {
-  // }
-
-  //bloat_map(2);
-  print_map(origin_map_);
   return true;
 }
 
@@ -109,6 +118,75 @@ void PointCloudHandler::bloat_map(int num_of_cells) {
     origin_map_ = bloated_map;
   }
   work_map_ = origin_map_;
+}
+
+void PointCloudHandler::fill_empty_boxes() {
+  std::vector<std::vector<int>> slice(map_size_[0], std::vector<int>(map_size_[1]));
+  for (unsigned int layer = 0; layer < origin_map_[0][0].size(); layer++) {
+    for (unsigned int row = 0; row < origin_map_.size(); row++) {
+      for (unsigned int col = 0; col < origin_map_[0].size(); col++) {
+        slice[row][col] = origin_map_[row][col][layer];
+      }
+    }
+
+    // fills room with 2s
+    find_boxes(slice);
+
+    // 0 -> space in boxes, 2 -> free space
+    for (unsigned int row = 0; row < slice.size(); row++) {
+      for (unsigned int col = 0; col < slice[0].size(); col++) {
+        if (slice[row][col] == 0)
+          slice[row][col] = 1;
+        else if (slice[row][col] == 2)
+          slice[row][col] = 0;
+      }
+    }
+
+    for (unsigned int row = 0; row < origin_map_.size(); row++) {
+      for (unsigned int col = 0; col < origin_map_[0].size(); col++) {
+        origin_map_[row][col][layer] = slice[row][col];
+      }
+    }
+  }
+}
+
+void PointCloudHandler::flood_fill_room(std::vector<std::vector<int>> &grid,
+                                 unsigned int x, unsigned int y) {
+  if (x >= grid.size() || y >= grid[0].size() || grid[x][y] != 0) {
+    return;
+  }
+  grid[x][y] = 2; // Mark as visited
+  flood_fill_room(grid, x + 1, y);
+  flood_fill_room(grid, x - 1, y);
+  flood_fill_room(grid, x, y + 1);
+  flood_fill_room(grid, x, y - 1);
+}
+
+void PointCloudHandler::find_boxes(std::vector<std::vector<int>> &grid) {
+  for (unsigned int i = 200; i < grid.size(); i++) {
+    for (unsigned int j = 200; j < grid[0].size(); j++) {
+      if (grid[i][j] == 0) {
+        std::vector<std::pair<int, int>> visitedCells;
+        flood_fill_room(grid, i, j);
+        bool isClosedLoop = true;
+
+        // Check if the region has a wall in its boundary
+        for (auto cell : visitedCells) {
+          unsigned int x = cell.first;
+          unsigned int y = cell.second;
+          if (x == 200 || x == grid.size() - 1 || y == 200 ||
+              y == grid[0].size() - 1) {
+            isClosedLoop = false;
+            break;
+          }
+        }
+
+        if (isClosedLoop) {
+          return;
+        }
+      }
+    }
+  }
 }
 
 
