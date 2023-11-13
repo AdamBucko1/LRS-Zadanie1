@@ -1,13 +1,14 @@
 #include <drone_control/common.hpp>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/cloud_viewer.h>
 
 class PointCloudHandler {
 public:
   PointCloudHandler();
-  // bool generate_path(Point<double> start, Point<double> goal);
-  // inline std::vector<Point<double>> get_waypoints() { return waypoints_; };
-  // inline std::vector<Point<double>> get_path() { return path_; };
+  bool generate_path(Point<double> start, Point<double> goal);
+  inline std::vector<Point<double>> get_waypoints() { return waypoints_; };
+  inline std::vector<Point<double>> get_path() { return path_; };
 
 private:
   bool load_map();
@@ -17,6 +18,7 @@ private:
   void flood_fill_room(std::vector<std::vector<int>> &grid, unsigned int x, unsigned int y);
   void find_boxes(std::vector<std::vector<int>> &grid);
   void fill_empty_boxes();
+  void show_cloud();
 
 private:
   std::vector<std::vector<std::vector<int>>> origin_map_; //[y][x][z]
