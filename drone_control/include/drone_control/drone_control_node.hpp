@@ -7,6 +7,7 @@
 #include <mavros_msgs/srv/set_mode.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <regex>
+#include <std_srvs/srv/set_bool.hpp> // For the SetBool service type
 class DroneControlNode : public rclcpp::Node {
 public:
   DroneControlNode();
@@ -25,6 +26,7 @@ private:
   void generate_path_waypoints();
   void load_data();
   void set_default_variables();
+  void setup_service_servers();
   bool select_next_waypoint(geometry_msgs::msg::PoseStamped &waypoint_location_,
                             std::vector<Point<double>> waypoints, int &index,
                             bool main_waypoint);
@@ -33,6 +35,17 @@ private:
                    std::vector<Point<double>> &main_waypoints,
                    std::vector<std::string> &precision,
                    std::vector<std::string> &command);
+
+  void stop_service_callback(
+      const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+      std::shared_ptr<std_srvs::srv::SetBool::Response> response);
+
+  void continue_service_callback(
+      const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+      std::shared_ptr<std_srvs::srv::SetBool::Response> response);
+
+  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr stop_service;
+  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr continue_service;
 
   void local_pos_subscriber();
   rclcpp::Subscription<mavros_msgs::msg::State>::SharedPtr state_sub_;
@@ -82,11 +95,14 @@ private:
     FLYING,
     WAYPOINT_REACHED,
     ACTION_PERFORMED,
-    FINISHED
+    FINISHED,
+    STOP
   };
 
   enum ActionState { NONE, LANDTAKEOFF, YAW, LAND, LANDED };
   MissionState mission_state;
   ActionState action_state;
+  MissionState remembered_mission_state;
+  ActionState remembered_action_state;
   MapHandler map_handler_;
 };

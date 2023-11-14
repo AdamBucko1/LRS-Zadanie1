@@ -15,8 +15,8 @@ void DroneControlNode::init() {
   initialize_trajectory();
   setup_publishers();
   setup_subscribers();
-  setup_services();
   setup_clients();
+  setup_service_servers();
 }
 
 void DroneControlNode::initialize_trajectory() {
@@ -166,6 +166,17 @@ void DroneControlNode::transformPoints(std::vector<Point<double>> &waypoints,
   }
 }
 
+void DroneControlNode::setup_service_servers() {
+  stop_service = this->create_service<std_srvs::srv::SetBool>(
+      "stop_drone", std::bind(&DroneControlNode::stop_service_callback, this,
+                              std::placeholders::_1, std::placeholders::_2));
+
+  continue_service = this->create_service<std_srvs::srv::SetBool>(
+      "continue_drone",
+      std::bind(&DroneControlNode::continue_service_callback, this,
+                std::placeholders::_1, std::placeholders::_2));
+}
+
 void DroneControlNode::setup_publishers() {
   waypoint_pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
       "mavros/setpoint_position/local", 10);
@@ -203,7 +214,41 @@ void DroneControlNode::setup_clients() {
       this->create_client<mavros_msgs::srv::CommandTOL>("mavros/cmd/takeoff");
 }
 
-void DroneControlNode::setup_services() {}
+void DroneControlNode::stop_service_callback(
+    const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+    std::shared_ptr<std_srvs::srv::SetBool::Response> response) {
+  // Implement logic to stop the drone
+  if (mission_state == STOP) {
+    response->success = true; // Set to false if stopping fails
+    response->message = "Drone already stopped"; // Custom response message
+    return;
+  }
+  remembered_action_state = action_state;
+  remembered_mission_state = mission_state;
+  mission_state = STOP;
+  action_state = NONE;
+  if (request->data) {
+    waypoint_pose_pub_->publish(current_local_pos_);
+  }
+  response->success = true;            // Set to false if stopping fails
+  response->message = "Drone stopped"; // Custom response message
+}
+
+void DroneControlNode::continue_service_callback(
+    const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+    std::shared_ptr<std_srvs::srv::SetBool::Response> response) {
+  // Implement logic to continue the drone's mission
+  if (mission_state != STOP) {
+    response->success = true; // Set to false if continuation fails
+    response->message =
+        "Drone is already performing tasks"; // Custom response message
+    return;
+  }
+  mission_state = remembered_mission_state;
+  action_state = remembered_action_state;
+  response->success = true; // Set to false if continuation fails
+  response->message = "Drone will nwo continue its mission";
+}
 
 void DroneControlNode::autonomous_mission() {
 
@@ -278,6 +323,9 @@ void DroneControlNode::autonomous_mission() {
       action_state = NONE;
       mission_state = CONNECTED;
     }
+    break;
+  case STOP:
+    RCLCPP_INFO(this->get_logger(), "STOP STATE");
     break;
 
   default:
