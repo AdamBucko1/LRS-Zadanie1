@@ -99,7 +99,7 @@ private:
     STOP
   };
 
-  enum ActionState { NONE, LANDTAKEOFF, YAW, LAND, LANDED };
+  enum ActionState { NONE, LANDTAKEOFF, YAW, LAND, LANDED, CIRCLE };
   MissionState mission_state;
   ActionState action_state;
   MissionState remembered_mission_state;
