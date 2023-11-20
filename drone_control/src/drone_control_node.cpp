@@ -70,6 +70,7 @@ void DroneControlNode::load_data() {
 }
 
 void DroneControlNode::set_default_variables() {
+  circle_radius_ = 0;
   start_takeoff_height_ = 0.25;
   spawn_position.x = 13.6;
   spawn_position.y = 1.5;
@@ -407,9 +408,16 @@ void DroneControlNode::select_waypoint_action() {
   } else if (command_vect_[waypoint_index_] == "landtakeoff") {
     action_state = LANDTAKEOFF;
     RCLCPP_INFO(this->get_logger(), "LANDTAKEOFF action selected");
-  } else if (command_vect_[waypoint_index_] == "circle") {
+  } else if (std::regex_match(command_vect_[waypoint_index_],
+                              std::regex("circle\\d+(\\.\\d+)?"))) {
+    // Handle the circle[number] command
+    std::smatch match;
+    std::regex_search(command_vect_[waypoint_index_], match,
+                      std::regex("\\d+(\\.\\d+)?"));
+    circle_radius_ = std::stod(match[0].str()); // Convert the string to double
     action_state = CIRCLE;
-    RCLCPP_INFO(this->get_logger(), "CIRCLE action selected");
+    RCLCPP_INFO(this->get_logger(), "CIRCLE action selected with radius %f",
+                circle_radius_);
   } else if (command_vect_[waypoint_index_] == "-") {
     action_state = NONE;
     RCLCPP_INFO(this->get_logger(), "No action on waypoint");
@@ -469,15 +477,15 @@ void DroneControlNode::perform_waypoint_action() {
 
   case CIRCLE:
     static const int num_points = 10; // Number of points in the circle
-    static const double radius = 2.0; // Radius of the circle in meters
     static double center_x = current_local_pos_.pose.position.x; // X center
     static double center_y = current_local_pos_.pose.position.y; // Y center
     static int circle_point_index = 0;
+    static int circle_precision = 0.7;
 
     if (circle_point_index < num_points) {
       double angle = (2 * M_PI / num_points) * circle_point_index;
-      double waypoint_x = center_x + radius * cos(angle);
-      double waypoint_y = center_y + radius * sin(angle);
+      double waypoint_x = center_x + circle_radius_ * cos(angle);
+      double waypoint_y = center_y + circle_radius_ * sin(angle);
 
       geometry_msgs::msg::PoseStamped waypoint;
       waypoint.pose.position.x = waypoint_x;
@@ -485,7 +493,7 @@ void DroneControlNode::perform_waypoint_action() {
       waypoint.pose.position.z =
           current_local_pos_.pose.position.z; // Same height
 
-      if (check_waypoint_reached(waypoint, 0.05)) {
+      if (check_waypoint_reached(waypoint, 0.7)) {
         circle_point_index++;
       } else {
         waypoint_pose_pub_->publish(waypoint);
@@ -498,7 +506,7 @@ void DroneControlNode::perform_waypoint_action() {
       waypoint.pose.position.z =
           current_local_pos_.pose.position.z; // Same height
 
-      if (check_waypoint_reached(waypoint, 0.05)) {
+      if (check_waypoint_reached(waypoint, 0.7)) {
         circle_point_index = 0; // Reset for the next action or circle
         mission_state = ACTION_PERFORMED;
         action_state = NONE;

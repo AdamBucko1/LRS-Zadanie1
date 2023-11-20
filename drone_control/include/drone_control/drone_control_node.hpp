@@ -84,6 +84,7 @@ private:
   double start_takeoff_height_;
   double precision_;
   double mission_yaw_;
+  double circle_radius_;
   std::vector<std::string> precision_vect_;
   std::vector<std::string> command_vect_;
   std::vector<double> current_rpy;
