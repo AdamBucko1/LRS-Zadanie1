@@ -22,23 +22,32 @@ find_package(std_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(mavros_msgs REQUIRED)
+find_package(PCL 1.2 REQUIRED)
 find_package(std_srvs REQUIRED)
 
 # Declare a C++ executable
 add_executable(drone_control_node 
               src/drone_control_node.cpp
-              src/map_handler.cpp)
+              src/map_handler.cpp
+              src/point_cloud_handler.cpp
+)
+
 
 ament_target_dependencies(drone_control_node rclcpp geometry_msgs mavros_msgs std_srvs)
 
-
+#install(TARGETS drone_control_node DESTINATION lib/${PROJECT_NAME})
 install(TARGETS drone_control_node DESTINATION lib/${PROJECT_NAME})
+
 
 include_directories(
   include
   /opt/ros/foxy/include
+  ${PCL_INCLUDE_DIRS}
 )
-
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+#target_link_libraries (drone_control_node ${PCL_LIBRARIES})
+target_link_libraries (drone_control_node ${PCL_LIBRARIES})
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
